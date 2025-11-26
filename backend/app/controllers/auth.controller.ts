@@ -57,8 +57,6 @@ export const signin = async (req: Request, res: Response) => {
       });
     }
 
-    console.log(authConfig.secret);
-
     // Generate JWT
     const token = jwt.sign({ id: user.id }, authConfig.secret, {
       expiresIn: 86400, // 24 hours
