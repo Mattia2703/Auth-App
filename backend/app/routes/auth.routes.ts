@@ -1,5 +1,5 @@
 import express from "express";
-import { signup, signin } from "../controllers/auth.controller.js";
+import { signup, signin, refresh } from "../controllers/auth.controller.js";
 import { verifySignUp } from "../middlewares/index.js";
 
 const router = express.Router();
@@ -13,5 +13,8 @@ router.post(
 
 // Signin Route
 router.post("/signin", signin);
+
+// Signin Route
+router.post("/refresh-token", refresh);
 
 export default router;

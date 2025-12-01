@@ -4,6 +4,8 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { Request, Response } from "express";
 import { UserModel } from "../models/user.types.js";
+import { RefreshToken } from "../models/refreshToken.model.js";
+import { RefreshTokenModel } from "../models/refreshToken.types.js";
 
 const User = db.user;
 const Role = db.role;
@@ -33,51 +35,90 @@ export const signup = async (req: Request, res: Response) => {
 
 export const signin = async (req: Request, res: Response) => {
   try {
-    // Find user by username
     const user = (await User.findOne({
-      where: {
-        username: req.body.username,
-      },
-    })) as UserModel;
+      where: { username: req.body.username },
+    })) as UserModel | null;
 
     if (!user) {
-      return res.status(404).json({ message: "User Not found." });
+      return res.status(404).json({ message: "User Not Found" });
     }
 
-    // Validate password
     const passwordIsValid = await bcrypt.compare(
       req.body.password,
       user.password
     );
 
     if (!passwordIsValid) {
-      return res.status(401).json({
-        accessToken: null,
-        message: "Invalid Password!",
-      });
+      return res.status(401).json({ message: "Invalid Password" });
     }
 
-    // Generate JWT
-    const token = jwt.sign({ id: user.id }, authConfig.secret, {
-      expiresIn: 86400, // 24 hours
+    // ACCESS TOKEN (short-lived)
+    const accessToken = jwt.sign({ id: user.id }, authConfig.secret, {
+      expiresIn: "20m",
     });
 
-    // Get user roles
+    // REFRESH TOKEN (long-lived)
+    const refreshToken = await RefreshToken.createToken(user);
+
+    console.log(refreshToken);
+
     const roles = await user.getRoles();
     const authorities = roles.map((role) => `ROLE_${role.name.toUpperCase()}`);
 
-    res.status(200).json({
+    return res.status(200).json({
       id: user.id,
       username: user.username,
       email: user.email,
       roles: authorities,
-      accessToken: token,
+      accessToken,
+      refreshToken,
     });
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      res.status(500).json({ message: error.message });
-    } else {
-      res.status(500).json({ message: "Unknown error" });
+  } catch (error) {
+    return res.status(500).json({ message: (error as Error).message });
+  }
+};
+
+export const refresh = async (req: Request, res: Response) => {
+  try {
+    const requestToken = req.body.refreshToken;
+
+    if (!requestToken) {
+      return res.status(403).json({ message: "Refresh token is required" });
     }
+
+    const tokenEntry = (await RefreshToken.findOne({
+      where: { token: requestToken },
+    })) as RefreshTokenModel;
+
+    if (!tokenEntry) {
+      return res.status(403).json({ message: "Refresh token not found" });
+    }
+
+    // Check expiry
+    if (RefreshToken.isExpired(tokenEntry)) {
+      await RefreshToken.destroy({ where: { id: tokenEntry.id } });
+
+      return res.status(403).json({
+        message: "Refresh token expired. Please log in again.",
+      });
+    }
+
+    // Create a new access token
+    const newAccessToken = jwt.sign(
+      { id: tokenEntry.userId },
+      authConfig.secret,
+      { expiresIn: "20m" }
+    );
+
+    // Rotate refresh token
+    const user = await tokenEntry.getUser();
+    const newRefreshToken = await RefreshToken.createToken(user);
+
+    return res.status(200).json({
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: (err as Error).message });
   }
 };
