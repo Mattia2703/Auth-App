@@ -52,12 +52,12 @@ export const signin = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Invalid Password" });
     }
 
-    // ACCESS TOKEN (short-lived)
+    // Create access token (short-lived)
     const accessToken = jwt.sign({ id: user.id }, authConfig.secret, {
       expiresIn: "20m",
     });
 
-    // REFRESH TOKEN (long-lived)
+    // Create regresh token (long-lived)
     const refreshToken = await RefreshToken.createToken(user);
 
     console.log(refreshToken);

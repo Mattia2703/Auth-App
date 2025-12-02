@@ -1,9 +1,23 @@
 import express from "express";
-import { moderatorBoard } from "../controllers/user.controller.js";
 import { authJwt } from "../middlewares/index.js";
+import {
+  getCurrentWeather,
+  getEURtoUSDRange,
+  getFlightByNumber,
+} from "../controllers/data.controller.js";
 
 const router = express.Router();
 
-router.get("/", [authJwt.verifyToken, authJwt.isModerator], test());
+// Test route
+router.get("/", [authJwt.verifyToken], () => console.log("test"));
+
+// Get current weather data (requires latitude and longitude as query params)
+router.get("/weather", [authJwt.verifyToken], getCurrentWeather);
+
+// Get current EUR to USD conversion
+router.get("/exchange", [authJwt.verifyToken], getEURtoUSDRange);
+
+//Track data for any given flight
+router.get("/flight", [authJwt.verifyToken], getFlightByNumber);
 
 export default router;

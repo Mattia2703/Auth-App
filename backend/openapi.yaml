@@ -1,0 +1,357 @@
+openapi: 3.0.3
+info:
+  title: JWT Auth Node.js API
+  description: API documentation for your Node.js JWT Authentication app
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+paths:
+  /api/auth/signup:
+    post:
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  example: user1
+                email:
+                  type: string
+                  example: user1@example.com
+                password:
+                  type: string
+                  example: password123
+      responses:
+        "200":
+          description: User created successfully
+  /api/auth/signin:
+    post:
+      summary: Login a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  example: user1
+                password:
+                  type: string
+                  example: password123
+      responses:
+        "200":
+          description: Login successful
+  /api/data:
+    get:
+      summary: Fetch protected data
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Returns data
+  /api/data/weather:
+    get:
+      summary: Get current weather for a location
+      description: Retrieves current weather data using the Open-Meteo API. Requires `latitude` and `longitude` query parameters.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: latitude
+          in: query
+          required: true
+          schema:
+            type: number
+            example: 52.52
+        - name: longitude
+          in: query
+          required: true
+          schema:
+            type: number
+            example: 13.41
+      responses:
+        "200":
+          description: Returns current weather data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  location:
+                    type: object
+                    properties:
+                      latitude:
+                        type: number
+                        example: 52.52
+                      longitude:
+                        type: number
+                        example: 13.41
+                      timezone:
+                        type: string
+                        example: Europe/Berlin
+                  current:
+                    type: object
+                    properties:
+                      time:
+                        type: string
+                        format: date-time
+                        example: "2025-12-02T12:00:00Z"
+                      temperature:
+                        type: object
+                        properties:
+                          value:
+                            type: number
+                            example: 5.4
+                          unit:
+                            type: string
+                            example: "°C"
+                      apparentTemperature:
+                        type: object
+                        properties:
+                          value:
+                            type: number
+                            example: 3.2
+                          unit:
+                            type: string
+                            example: "°C"
+                      humidity:
+                        type: object
+                        properties:
+                          value:
+                            type: number
+                            example: 85
+                          unit:
+                            type: string
+                            example: "%"
+                      precipitation:
+                        type: object
+                        properties:
+                          value:
+                            type: number
+                            example: 0.0
+                          unit:
+                            type: string
+                            example: "mm"
+                      weatherCode:
+                        type: integer
+                        example: 1
+                      wind:
+                        type: object
+                        properties:
+                          speed:
+                            type: object
+                            properties:
+                              value:
+                                type: number
+                                example: 3.5
+                              unit:
+                                type: string
+                                example: "km/h"
+                          direction:
+                            type: object
+                            properties:
+                              value:
+                                type: number
+                                example: 180
+                              unit:
+                                type: string
+                                example: "°"
+        "400":
+          description: Invalid or missing latitude/longitude
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Latitude and longitude are required
+        "500":
+          description: Failed to fetch weather data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: Failed to fetch weather data
+                  error:
+                    type: string
+                    example: Network error
+  /api/data/exchange:
+    get:
+      summary: Get EUR to USD exchange rates for a date range
+      description: >
+        Returns historical EUR to USD exchange rates between `startDate` and `endDate`.
+        Useful for charting purposes.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+            example: "2025-11-25"
+          description: Start date of the range (YYYY-MM-DD)
+        - name: endDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+            example: "2025-12-01"
+          description: End date of the range (YYYY-MM-DD)
+      responses:
+        "200":
+          description: Historical exchange rates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  base:
+                    type: string
+                    example: EUR
+                  startDate:
+                    type: string
+                    format: date
+                    example: "2025-11-25"
+                  endDate:
+                    type: string
+                    format: date
+                    example: "2025-12-01"
+                  rates:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                          format: date
+                          example: "2025-11-25"
+                        rate:
+                          type: number
+                          example: 1.082
+        "400":
+          description: Missing or invalid query parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "startDate and endDate query parameters are required"
+        "500":
+          description: Failed to fetch exchange rates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: Failed to fetch exchange rates
+                  error:
+                    type: string
+                    example: Network error
+  /api/data/flight:
+    get:
+      summary: Get current flight data by flight number
+      description: Fetches live flight data using OpenSky Network API (no API key needed)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: flightNumber
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "LH1234"
+      responses:
+        "200":
+          description: Flight data returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  flights:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        icao24:
+                          type: string
+                          example: "3c6444"
+                        callsign:
+                          type: string
+                          example: "LH1234"
+                        origin_country:
+                          type: string
+                          example: "Germany"
+                        time_position:
+                          type: integer
+                          example: 1672531200
+                        last_contact:
+                          type: integer
+                          example: 1672531210
+                        longitude:
+                          type: number
+                          example: 13.404
+                        latitude:
+                          type: number
+                          example: 52.52
+                        baro_altitude:
+                          type: number
+                          example: 11000
+                        on_ground:
+                          type: boolean
+                          example: false
+                        velocity:
+                          type: number
+                          example: 230
+                        true_track:
+                          type: number
+                          example: 90
+                        vertical_rate:
+                          type: number
+                          example: 5
+        "400":
+          description: Missing flightNumber
+        "404":
+          description: Flight not found
+        "500":
+          description: Failed to fetch flight data
