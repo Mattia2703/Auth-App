@@ -8,14 +8,20 @@ import authRoutes from "./app/routes/auth.routes.js";
 import dataRoutes from "./app/routes/data.routes.js";
 import swaggerUi from "swagger-ui-express";
 import YAML from "yamljs";
+import cookieParser from "cookie-parser";
 
 const app = express();
 
 const corsOptions = {
-  origin: "http://localhost:8081",
+  origin: process.env.FRONTEND_URL || "http://localhost:3000",
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-access-token"],
 };
 
 app.use(cors(corsOptions));
+
+app.use(cookieParser());
 
 const swaggerDocument = YAML.load("./openapi.yaml");
 

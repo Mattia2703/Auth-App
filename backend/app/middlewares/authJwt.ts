@@ -2,35 +2,44 @@ import jwt from "jsonwebtoken";
 import db from "../models/index.js";
 import authConfig from "../config/auth.config.js";
 import { Request, Response, NextFunction } from "express";
-import { JwtPayload } from "jsonwebtoken";
 import { UserModel } from "../models/user.types.js";
+
+interface AuthTokenPayload {
+  id: string;
+}
 
 declare global {
   namespace Express {
-    export interface Request {
+    interface Request {
       userId?: string;
     }
   }
 }
 
-interface AuthTokenPayload extends JwtPayload {
-  id: string;
-}
-
 const User = db.user;
 
 const verifyToken = (req: Request, res: Response, next: NextFunction) => {
-  const tokenHeader =
-    req.headers["x-access-token"] || req.headers["authorization"];
-  const token = Array.isArray(tokenHeader) ? tokenHeader[0] : tokenHeader;
+  // Try to get token from multiple sources
+  // 1. Try cookies first (httpOnly cookies from Next.js)
+  let token = req.cookies?.accessToken;
+
+  // 2. Fallback to headers (for API clients that don't use cookies)
+  if (!token) {
+    const tokenHeader =
+      req.headers["x-access-token"] || req.headers["authorization"];
+    token = Array.isArray(tokenHeader) ? tokenHeader[0] : tokenHeader;
+
+    // Remove "Bearer " prefix if present
+    if (token && token.startsWith("Bearer ")) {
+      token = token.slice(7);
+    }
+  }
 
   if (!token) {
     return res.status(403).json({ message: "No token provided!" });
   }
 
-  const actualToken = token.startsWith("Bearer ") ? token.slice(7) : token;
-
-  jwt.verify(actualToken, authConfig.secret, (err, decoded) => {
+  jwt.verify(token as string, authConfig.secret, (err, decoded) => {
     if (err) {
       return res.status(401).json({ message: "Unauthorized!" });
     }
