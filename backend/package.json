@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.ts",
   "scripts": {
-    "dev": "nodemon --watch './**/*.ts' --exec 'node --loader ts-node/esm' server.ts"
+    "dev": "nodemon --watch ./ --exec node --loader ts-node/esm server.ts"
   },
   "keywords": [],
   "author": "",
