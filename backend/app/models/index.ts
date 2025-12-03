@@ -29,7 +29,7 @@ const db: DB = {
   ROLES: ["user", "admin", "moderator"],
 };
 
-// Run associations for all models that define `associate(db)`
+// Run associations for all models that define "associate(db)"
 Object.values(db).forEach((model: any) => {
   if (model && typeof model.associate === "function") {
     model.associate(db);

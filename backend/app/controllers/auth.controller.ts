@@ -12,6 +12,18 @@ const Role = db.role;
 
 export const signup = async (req: Request, res: Response) => {
   try {
+    if (!req.body.password || !req.body.username || !req.body.email) {
+      res.status(500).json({ message: "Missing information!" });
+      return;
+    }
+
+    if (req.body.password.length < 6) {
+      res
+        .status(500)
+        .json({ message: "Password must be longer than 6 characters!" });
+      return;
+    }
+
     // Create new user
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
     const user = (await User.create({
