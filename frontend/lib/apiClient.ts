@@ -44,7 +44,7 @@ class ApiClient {
     });
 
     // If unauthorized, try to refresh token
-    if (response.status === 401) {
+    if (response.status === 401 || response.status == 403) {
       if (this.isRefreshing) {
         // Wait for ongoing refresh to complete
         return new Promise((resolve, reject) => {
@@ -59,7 +59,6 @@ class ApiClient {
           });
         });
       }
-
       this.isRefreshing = true;
 
       try {

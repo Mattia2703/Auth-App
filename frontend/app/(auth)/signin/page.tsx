@@ -1,33 +1,33 @@
 "use client";
 import { useState } from "react";
-import AuthInput from "../components/AuthInput";
+import AuthInput from "../../../components/ui/AuthInput";
 import { useAuth } from "@/context/AuthContext";
-import { Button } from "@/components/Button";
+import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 
-export default function SignUp() {
-  const [email, setEmail] = useState("");
+export default function SignIn() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const { register } = useAuth();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    if (!username || !password || !email) {
+    if (!username || !password) {
       setError("Please fill out all fields.");
+      setLoading(false);
       return;
     }
 
     try {
-      await register(username, email, password);
+      await login(username, password);
     } catch (err: unknown) {
       setError(
-        err instanceof Error ? err.message : "Sign Up failed. Please try again."
+        err instanceof Error ? err.message : "Login failed. Please try again."
       );
     } finally {
       setLoading(false);
@@ -35,9 +35,9 @@ export default function SignUp() {
   };
 
   return (
-    <div className="min-h-screen flex bg-primary items-center justify-center">
-      <div className="px-8 py-12 rounded-md border-tertiary border glow flex flex-col gap-6 w-2/3 md:w-2/5 lg:w-1/3">
-        <h1 className="text-secondary text-3xl font-bold">Sign Up</h1>
+    <div className="min-h-screen flex bg-background items-center justify-center">
+      <div className="px-8 py-24 rounded-md border-tertiary border glow flex flex-col gap-6  w-4/5 md:w-3/5 lg:w-1/3">
+        <h1 className="text-primary text-3xl font-bold">Sign In</h1>
         {error && (
           <h2 className="text-warning font-semibold text-md">{error}</h2>
         )}
@@ -48,25 +48,19 @@ export default function SignUp() {
             title="Username"
           />
           <AuthInput
-            onChange={(e) => setEmail(e.target.value)}
-            value={email}
-            title="Email"
-            type="email"
-          />
-          <AuthInput
             onChange={(e) => setPassword(e.target.value)}
             value={password}
             title="Password"
             type="password"
           />
           <Button disabled={loading} variant="secondary">
-            {loading ? "Signing Up..." : "Sign Up"}
+            {loading ? "Signing In..." : "Sign In"}
           </Button>
         </form>
-        <div className="text-secondary w-full flex justify-center items-center text-sm">
-          <Link href={"/signin"} className="flex flex-row flex-wrap gap-1">
-            <div className="text-nowrap">Already have an Account?</div>
-            <div className="text-tertiary">Sign In</div>
+        <div className="w-full flex justify-center items-center text-sm">
+          <Link href={"/signup"} className="flex flex-row flex-wrap gap-1">
+            <div className="text-nowrap">Don&apos;t have an Account?</div>
+            <div className="text-tertiary">Sign Up</div>
           </Link>
         </div>
       </div>
