@@ -355,3 +355,52 @@ paths:
           description: Flight not found
         "500":
           description: Failed to fetch flight data
+  /api/auth/refresh:
+    post:
+      summary: Refresh access token
+      description: Generates a new access token and rotates the refresh token.
+        Requires a valid (non-expired) refresh token in the request body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+                  example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      responses:
+        "200":
+          description: New access and refresh tokens generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                    example: newAccessTokenHere
+                  refreshToken:
+                    type: string
+                    example: newRefreshTokenHere
+        "403":
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Refresh token expired. Please log in again.
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Internal server error

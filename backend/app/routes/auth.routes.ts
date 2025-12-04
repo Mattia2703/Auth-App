@@ -14,7 +14,7 @@ router.post(
 // Signin Route
 router.post("/signin", signin);
 
-// Signin Route
-router.post("/refresh-token", refresh);
+// Refresh Route
+router.post("/refresh", refresh);
 
 export default router;
