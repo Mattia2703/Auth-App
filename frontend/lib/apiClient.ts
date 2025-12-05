@@ -1,112 +1,118 @@
+import createClient from "openapi-fetch";
+import type { paths } from "@/types/api";
 import { refreshTokenAction } from "./authActions";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-class ApiClient {
-  private isRefreshing = false;
-  private refreshSubscribers: ((token: string) => void)[] = [];
+const client = createClient<paths>({
+  baseUrl: API_URL,
+  credentials: "include",
+});
 
-  private subscribeTokenRefresh(callback: (token: string) => void) {
-    this.refreshSubscribers.push(callback);
+// Token refresh state
+let isRefreshing = false;
+let refreshSubscribers: ((token: string) => void)[] = [];
+
+function subscribeTokenRefresh(callback: (token: string) => void) {
+  refreshSubscribers.push(callback);
+}
+
+function onTokenRefreshed(token: string) {
+  refreshSubscribers.forEach((callback) => callback(token));
+  refreshSubscribers = [];
+}
+
+async function handleTokenRefresh() {
+  if (isRefreshing) {
+    // Wait for ongoing refresh
+    return new Promise<string>((resolve) => {
+      subscribeTokenRefresh((token) => resolve(token));
+    });
   }
 
-  private onTokenRefreshed(newAccessToken: string) {
-    this.refreshSubscribers.forEach((callback) => callback(newAccessToken));
-    this.refreshSubscribers = [];
-  }
-
-  private async refreshAccessToken(): Promise<string | null> {
+  isRefreshing = true;
+  try {
     const result = await refreshTokenAction();
 
     if (!result.success) {
-      // Refresh failed, redirect to login
       window.location.href = "/login";
-      return null;
+      throw new Error("Token refresh failed");
     }
 
-    return result.accessToken || null;
-  }
-
-  async request(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<Response> {
-    const headers: HeadersInit = {
-      "Content-Type": "application/json",
-      ...options.headers,
-    };
-
-    // Note: Don't need to manually add Authorization header as httpOnly cookies are automatically sent with the request
-    let response = await fetch(`${API_URL}${endpoint}`, {
-      ...options,
-      headers,
-      credentials: "include", // Here we send the cookies with the request
-    });
-
-    // If unauthorized, try to refresh token
-    if (response.status === 401 || response.status == 403) {
-      if (this.isRefreshing) {
-        // Wait for ongoing refresh to complete
-        return new Promise((resolve, reject) => {
-          this.subscribeTokenRefresh(() => {
-            fetch(`${API_URL}${endpoint}`, {
-              ...options,
-              headers,
-              credentials: "include",
-            })
-              .then(resolve)
-              .catch(reject);
-          });
-        });
-      }
-      this.isRefreshing = true;
-
-      try {
-        const newAccessToken = await this.refreshAccessToken();
-        this.isRefreshing = false;
-
-        if (!newAccessToken) {
-          throw new Error("Token refresh failed");
-        }
-
-        // Notify subscribers
-        this.onTokenRefreshed(newAccessToken);
-
-        // Retry original request
-        response = await fetch(`${API_URL}${endpoint}`, {
-          ...options,
-          headers,
-          credentials: "include",
-        });
-      } catch (error) {
-        this.isRefreshing = false;
-        throw error;
-      }
-    }
-
-    return response;
-  }
-
-  async get<T>(endpoint: string): Promise<T> {
-    const response = await this.request(endpoint, { method: "GET" });
-    return response.json();
-  }
-
-  async post<T>(endpoint: string, data?: unknown): Promise<T> {
-    const response = await this.request(endpoint, {
-      method: "POST",
-      body: data ? JSON.stringify(data) : undefined,
-    });
-    return response.json();
-  }
-
-  async put<T>(endpoint: string, data?: unknown): Promise<T> {
-    const response = await this.request(endpoint, {
-      method: "PUT",
-      body: data ? JSON.stringify(data) : undefined,
-    });
-    return response.json();
+    const newToken = result.accessToken || "";
+    onTokenRefreshed(newToken);
+    return newToken;
+  } finally {
+    isRefreshing = false;
   }
 }
 
-export const apiClient = new ApiClient();
+// Intercept responses to handle 401 and 403 errors
+client.use({
+  async onResponse({ request, response, options }) {
+    if (response.status === 401 || response.status === 403) {
+      try {
+        // 1. Get the new token (waits if a refresh is already in progress)
+        const newToken = await handleTokenRefresh();
+
+        // 2. Clone the headers from the original request
+        const headers = new Headers(request.headers);
+
+        // 3. Update the Authorization header
+        headers.set("Authorization", `Bearer ${newToken}`);
+
+        // 4. RETRY the request manually using global fetch
+        // We pass the original URL and updated options
+        const newResponse = await fetch(request.url, {
+          ...options, // Keep original options (method, body, etc.)
+          headers, // Use updated headers
+        });
+
+        return newResponse;
+      } catch (error) {
+        console.error("Token refresh failed during retry:", error);
+        return response;
+      }
+    }
+    // If not 401/403, return undefined to let the original response pass through
+    return undefined;
+  },
+});
+
+// Export typed API methods with automatic retry
+const api = {
+  // Auth endpoints
+  auth: {
+    signup: (data: { username: string; email: string; password: string }) =>
+      client.POST("/api/auth/signup", { body: data }),
+
+    signin: (data: { username: string; password: string }) =>
+      client.POST("/api/auth/signin", { body: data }),
+
+    refresh: (data: { refreshToken: string }) =>
+      client.POST("/api/auth/refresh", { body: data }),
+  },
+
+  // Weather endpoint
+  weather: {
+    getCurrent: (params: { latitude: number; longitude: number }) =>
+      client.GET("/api/data/weather", { params: { query: params } }),
+  },
+
+  // Exchange rates endpoint
+  exchange: {
+    getRates: (params: { startDate: string; endDate: string }) =>
+      client.GET("/api/data/exchange", { params: { query: params } }),
+  },
+
+  // Flight data endpoint
+  flight: {
+    getData: (params: { flightNumber: string }) =>
+      client.GET("/api/data/flight", { params: { query: params } }),
+  },
+  randomFlight: {
+    getData: () => client.GET("/api/data/random-flight"),
+  },
+};
+
+export { client, api };
