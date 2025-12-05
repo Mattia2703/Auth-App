@@ -4,6 +4,7 @@ import {
   getCurrentWeather,
   getEURtoUSDRange,
   getFlightByNumber,
+  getRandomFlight,
 } from "../controllers/data.controller.js";
 
 const router = express.Router();
@@ -17,7 +18,10 @@ router.get("/weather", [authJwt.verifyToken], getCurrentWeather);
 // Get current EUR to USD conversion
 router.get("/exchange", [authJwt.verifyToken], getEURtoUSDRange);
 
-//Track data for any given flight
+// Track data for any given flight
 router.get("/flight", [authJwt.verifyToken], getFlightByNumber);
+
+// Data for a random flight
+router.get("/random-flight", [authJwt.verifyToken], getRandomFlight);
 
 export default router;

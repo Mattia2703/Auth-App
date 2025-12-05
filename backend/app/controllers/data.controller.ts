@@ -213,3 +213,53 @@ export const getFlightByNumber = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getRandomFlight = async (req: Request, res: Response) => {
+  try {
+    const response = await fetch("https://opensky-network.org/api/states/all");
+
+    if (!response.ok) {
+      throw new Error(`OpenSky API responded with status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.states || data.states.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No flights currently available",
+      });
+    }
+
+    // Pick a random flight
+    const randomIndex = Math.floor(Math.random() * data.states.length);
+    const state = data.states[randomIndex];
+
+    const flightData = {
+      icao24: state[0],
+      callsign: state[1]?.trim(),
+      origin_country: state[2],
+      time_position: state[3],
+      last_contact: state[4],
+      longitude: state[5],
+      latitude: state[6],
+      baro_altitude: state[7],
+      on_ground: state[8],
+      velocity: state[9],
+      true_track: state[10],
+      vertical_rate: state[11],
+    };
+
+    return res.status(200).json({
+      success: true,
+      flight: flightData,
+    });
+  } catch (error) {
+    console.error("Error fetching flight data:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch flight data",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
